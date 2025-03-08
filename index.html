@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - MegaListaDeia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Importando versão mais estável do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-200">
+    <!-- App Container -->
+    <div id="app" class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- Login Section -->
+        <div id="loginSection" class="w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+            <h1 class="text-2xl font-bold text-center mb-6 text-primary">Admin Portal</h1>
+            <div id="loginForm" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium mb-1">Email</label>
+                    <input type="email" id="email" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="your@email.com">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium mb-1">Senha</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="********">
+                </div>
+                <button id="loginBtn" class="w-full bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200">
+                    Entrar
+                </button>
+                <div id="loginError" class="text-red-500 text-sm hidden"></div>
+            </div>
+        </div>
+
+        <!-- Dashboard Section (Hidden until logged in) -->
+        <div id="dashboardSection" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-primary">Painel de Administração</h1>
+                <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                    Sair
+                </button>
+            </div>
+
+            <!-- Firebase Status Indicator -->
+            <div id="firebaseStatus" class="mb-4 p-2 rounded-md text-sm"></div>
+
+            <!-- Navigation Tabs -->
+            <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center">
+                    <li class="mr-2">
+                        <button id="tab-images" class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-primary dark:hover:text-primary active">Imagens</button>
+                    </li>
+                    <li class="mr-2">
+                        <button id="tab-products" class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-primary dark:hover:text-primary">Produtos</button>
+                    </li>
+                    <li class="mr-2">
+                        <button id="tab-clients" class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-primary dark:hover:text-primary">Clientes</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="tabContent">
+                <!-- Images Tab -->
+                <div id="content-images" class="tab-content">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-semibold mb-4">Adicionar Imagem por URL</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="imageTitle" class="block text-sm font-medium mb-1">Título da Imagem</label>
+                                <input type="text" id="imageTitle" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Título da imagem">
+                            </div>
+                            <div>
+                                <label for="imageUrl" class="block text-sm font-medium mb-1">URL da Imagem</label>
+                                <input type="url" id="imageUrl" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/image.jpg">
+                            </div>
+                            <div class="flex items-center">
+                                <button id="previewImageBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md mr-2 transition duration-200">
+                                    Pré-visualizar
+                                </button>
+                                <button id="addImageBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                                    Adicionar Imagem
+                                </button>
+                            </div>
+                            <div id="imagePreview" class="hidden mt-4">
+                                <h3 class="text-sm font-medium mb-2">Pré-visualização:</h3>
+                                <img id="previewImg" src="" alt="Preview" class="max-h-64 rounded-md">
+                            </div>
+                            <div id="imageError" class="text-red-500 text-sm hidden"></div>
+                            <div id="imageSuccess" class="text-green-500 text-sm hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-4">Imagens Adicionadas</h2>
+                        <div id="imagesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Images will be loaded here -->
+                            <div class="text-center text-gray-500 dark:text-gray-400 py-8">Carregando imagens...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Tab -->
+                <div id="content-products" class="tab-content hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-semibold mb-4">Adicionar Produto</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="productName" class="block text-sm font-medium mb-1">Nome do Produto</label>
+                                <input type="text" id="productName" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Nome do produto">
+                            </div>
+                            <div>
+                                <label for="productDescription" class="block text-sm font-medium mb-1">Descrição</label>
+                                <textarea id="productDescription" rows="3" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Descrição do produto"></textarea>
+                            </div>
+                            <div>
+                                <label for="productImageUrl" class="block text-sm font-medium mb-1">URL da Imagem</label>
+                                <input type="url" id="productImageUrl" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/product.jpg">
+                            </div>
+                            <div>
+                                <label for="productRedirectUrl" class="block text-sm font-medium mb-1">URL de Redirecionamento</label>
+                                <input type="url" id="productRedirectUrl" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/product-page">
+                            </div>
+                            <div>
+                                <label for="productButtonText" class="block text-sm font-medium mb-1">Texto do Botão</label>
+                                <input type="text" id="productButtonText" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Comprar Agora" value="Comprar Agora">
+                            </div>
+                            <button id="addProductBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                                Adicionar Produto
+                            </button>
+                            <div id="productError" class="text-red-500 text-sm hidden"></div>
+                            <div id="productSuccess" class="text-green-500 text-sm hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-4">Produtos Adicionados</h2>
+                        <div id="productsList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Products will be loaded here -->
+                            <div class="text-center text-gray-500 dark:text-gray-400 py-8">Carregando produtos...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clients Tab -->
+                <div id="content-clients" class="tab-content hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-semibold mb-4">Adicionar Cliente</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="clientName" class="block text-sm font-medium mb-1">Nome do Cliente</label>
+                                <input type="text" id="clientName" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Nome completo">
+                            </div>
+                            <div>
+                                <label for="clientEmail" class="block text-sm font-medium mb-1">Email</label>
+                                <input type="email" id="clientEmail" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="cliente@email.com">
+                            </div>
+                            <div>
+                                <label for="clientPhone" class="block text-sm font-medium mb-1">Telefone</label>
+                                <input type="tel" id="clientPhone" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="(00) 00000-0000">
+                            </div>
+                            <button id="addClientBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                                Adicionar Cliente
+                            </button>
+                            <div id="clientError" class="text-red-500 text-sm hidden"></div>
+                            <div id="clientSuccess" class="text-green-500 text-sm hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-4">Lista de Clientes</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Telefone</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientsList" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- Clients will be loaded here -->
+                                    <tr>
+                                        <td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Carregando clientes...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg flex items-center">
+                <svg class="animate-spin h-8 w-8 text-primary mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-gray-800 dark:text-gray-200 font-medium">Carregando...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDAJS5oYvX2VzMBP0Dg_FtOVUeP6lG7sSk",
+            authDomain: "megalistadeia.firebaseapp.com",
+            databaseURL: "https://megalistadeia-default-rtdb.firebaseio.com",
+            projectId: "megalistadeia",
+            storageBucket: "megalistadeia.appspot.com", // Corrigido para o formato padrão
+            messagingSenderId: "900819794642",
+            appId: "1:900819794642:web:ee4f0c5b329e4778a98b0b",
+            measurementId: "G-0MDDT9B8XN"
+        };
+
+        // Elementos DOM
+        const firebaseStatus = document.getElementById('firebaseStatus');
+        const loginSection = document.getElementById('loginSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Inicialização do Firebase com tratamento de erros
+        try {
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            const database = firebase.database();
+            const storage = firebase.storage();
+            
+            // Verifica a conexão com o Firebase
+            const connectedRef = firebase.database().ref(".info/connected");
+            connectedRef.on("value", (snap) => {
+                if (snap.val() === true) {
+                    firebaseStatus.textContent = "Conectado ao Firebase";
+                    firebaseStatus.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900', 'dark:text-green-200');
+                    firebaseStatus.classList.remove('bg-red-100', 'text-red-800', 'dark:bg-red-900', 'dark:text-red-200');
+                } else {
+                    firebaseStatus.textContent = "Desconectado do Firebase. Verifique sua conexão.";
+                    firebaseStatus.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900', 'dark:text-red-200');
+                    firebaseStatus.classList.remove('bg-green-100', 'text-green-800', 'dark:bg-green-900', 'dark:text-green-200');
+                }
+            });
+
+            // Teste de leitura para verificar permissões
+            database.ref(".info/authenticated").once("value")
+                .then(() => {
+                    console.log("Teste de conexão com Firebase bem-sucedido");
+                })
+                .catch(error => {
+                    console.error("Erro no teste de conexão com Firebase:", error);
+                    firebaseStatus.textContent = `Erro de conexão: ${error.message}`;
+                    firebaseStatus.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900', 'dark:text-red-200');
+                });
+
+            // Dark Mode Detection
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+
+            // Tab Navigation
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            // Images Tab Elements
+            const imageTitle = document.getElementById('imageTitle');
+            const imageUrl = document.getElementById('imageUrl');
+            const previewImageBtn = document.getElementById('previewImageBtn');
+            const addImageBtn = document.getElementById('addImageBtn');
+            const imagePreview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            const imageError = document.getElementById('imageError');
+            const imageSuccess = document.getElementById('imageSuccess');
+            const imagesList = document.getElementById('imagesList');
+
+            // Products Tab Elements
+            const productName = document.getElementById('productName');
+            const productDescription = document.getElementById('productDescription');
+            const productImageUrl = document.getElementById('productImageUrl');
+            const productRedirectUrl = document.getElementById('productRedirectUrl');
+            const productButtonText = document.getElementById('productButtonText');
+            const addProductBtn = document.getElementById('addProductBtn');
+            const productError = document.getElementById('productError');
+            const productSuccess = document.getElementById('productSuccess');
+            const productsList = document.getElementById('productsList');
+
+            // Clients Tab Elements
+            const clientName = document.getElementById('clientName');
+            const clientEmail = document.getElementById('clientEmail');
+            const clientPhone = document.getElementById('clientPhone');
+            const addClientBtn = document.getElementById('addClientBtn');
+            const clientError = document.getElementById('clientError');
+            const clientSuccess = document.getElementById('clientSuccess');
+            const clientsList = document.getElementById('clientsList');
+
+            // Utility Functions
+            function showLoading() {
+                loadingOverlay.classList.remove('hidden');
+            }
+
+            function hideLoading() {
+                loadingOverlay.classList.add('hidden');
+            }
+
+            function showError(element, message) {
+                element.textContent = message;
+                element.classList.remove('hidden');
+                setTimeout(() => {
+                    element.classList.add('hidden');
+                }, 5000);
+            }
+
+            function showSuccess(element, message) {
+                element.textContent = message;
+                element.classList.remove('hidden');
+                setTimeout(() => {
+                    element.classList.add('hidden');
+                }, 5000);
+            }
+
+            function clearForm(inputs) {
+                inputs.forEach(input => {
+                    input.value = '';
+                });
+            }
+
+            // Authentication Logic
+            loginBtn.addEventListener('click', () => {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                if (!email || !password) {
+                    showError(loginError, 'Por favor, preencha todos os campos.');
+                    return;
+                }
+
+                showLoading();
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        hideLoading();
+                        loginSection.classList.add('hidden');
+                        dashboardSection.classList.remove('hidden');
+                        loadInitialData();
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro de autenticação:", error);
+                        showError(loginError, `Erro: ${error.message}`);
+                    });
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                auth.signOut()
+                    .then(() => {
+                        dashboardSection.classList.add('hidden');
+                        loginSection.classList.remove('hidden');
+                        document.getElementById('email').value = '';
+                        document.getElementById('password').value = '';
+                    })
+                    .catch(error => {
+                        console.error('Erro ao sair:', error);
+                    });
+            });
+
+            // Check if user is already logged in
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    loginSection.classList.add('hidden');
+                    dashboardSection.classList.remove('hidden');
+                    loadInitialData();
+                } else {
+                    dashboardSection.classList.add('hidden');
+                    loginSection.classList.remove('hidden');
+                }
+            });
+
+            // Tab Navigation Logic
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.id.replace('tab-', '');
+                    
+                    // Update active tab button
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('text-primary', 'border-primary', 'active');
+                        btn.classList.add('hover:text-primary', 'hover:border-primary');
+                    });
+                    button.classList.add('text-primary', 'border-primary', 'active');
+                    button.classList.remove('hover:text-primary', 'hover:border-primary');
+                    
+                    // Show selected tab content
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    document.getElementById(`content-${tabId}`).classList.remove('hidden');
+                });
+            });
+
+            // Load initial data for all tabs
+            function loadInitialData() {
+                loadImages();
+                loadProducts();
+                loadClients();
+            }
+
+            // Images Tab Logic
+            previewImageBtn.addEventListener('click', () => {
+                const url = imageUrl.value.trim();
+                if (!url) {
+                    showError(imageError, 'Por favor, insira uma URL de imagem válida.');
+                    return;
+                }
+
+                previewImg.src = url;
+                previewImg.onload = () => {
+                    imagePreview.classList.remove('hidden');
+                    imageError.classList.add('hidden');
+                };
+                previewImg.onerror = () => {
+                    showError(imageError, 'Não foi possível carregar a imagem. Verifique a URL.');
+                    imagePreview.classList.add('hidden');
+                };
+            });
+
+            addImageBtn.addEventListener('click', () => {
+                const title = imageTitle.value.trim();
+                const url = imageUrl.value.trim();
+
+                if (!title || !url) {
+                    showError(imageError, 'Por favor, preencha todos os campos.');
+                    return;
+                }
+
+                showLoading();
+                
+                // First, check if the image can be loaded
+                const testImg = new Image();
+                testImg.onload = () => {
+                    // Image loaded successfully, add to database
+                    const newImageRef = database.ref('images').push();
+                    newImageRef.set({
+                        title: title,
+                        url: url,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    })
+                    .then(() => {
+                        hideLoading();
+                        showSuccess(imageSuccess, 'Imagem adicionada com sucesso!');
+                        clearForm([imageTitle, imageUrl]);
+                        imagePreview.classList.add('hidden');
+                        loadImages(); // Reload images list
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao adicionar imagem:", error);
+                        showError(imageError, `Erro ao adicionar imagem: ${error.message}`);
+                    });
+                };
+                
+                testImg.onerror = () => {
+                    hideLoading();
+                    showError(imageError, 'Não foi possível carregar a imagem. Verifique a URL.');
+                };
+                
+                testImg.src = url;
+            });
+
+            function loadImages() {
+                imagesList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Carregando imagens...</div>';
+                
+                database.ref('images').orderByChild('timestamp').once('value')
+                    .then(snapshot => {
+                        if (snapshot.exists()) {
+                            const images = [];
+                            snapshot.forEach(childSnapshot => {
+                                const image = childSnapshot.val();
+                                image.id = childSnapshot.key;
+                                images.push(image);
+                            });
+                            
+                            // Sort by newest first
+                            images.sort((a, b) => b.timestamp - a.timestamp);
+                            
+                            displayImages(images);
+                        } else {
+                            imagesList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Nenhuma imagem encontrada.</div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar imagens:', error);
+                        imagesList.innerHTML = `<div class="col-span-full text-center text-red-500 py-8">Erro ao carregar imagens: ${error.message}</div>`;
+                    });
+            }
+
+            function displayImages(images) {
+                if (images.length === 0) {
+                    imagesList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Nenhuma imagem encontrada.</div>';
+                    return;
+                }
+                
+                imagesList.innerHTML = '';
+                
+                images.forEach(image => {
+                    const imageCard = document.createElement('div');
+                    imageCard.className = 'bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden shadow';
+                    imageCard.innerHTML = `
+                        <div class="relative pb-[75%]">
+                            <img src="${image.url}" alt="${image.title}" class="absolute inset-0 w-full h-full object-cover">
+                        </div>
+                        <div class="p-4">
+                            <h3 class="font-medium truncate">${image.title}</h3>
+                            <div class="mt-2 flex justify-end">
+                                <button class="delete-image text-red-500 hover:text-red-700 text-sm font-medium" data-id="${image.id}">
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    imagesList.appendChild(imageCard);
+                    
+                    // Add delete functionality
+                    imageCard.querySelector('.delete-image').addEventListener('click', (e) => {
+                        const imageId = e.target.getAttribute('data-id');
+                        deleteImage(imageId);
+                    });
+                });
+            }
+
+            function deleteImage(imageId) {
+                if (confirm('Tem certeza que deseja excluir esta imagem?')) {
+                    showLoading();
+                    database.ref(`images/${imageId}`).remove()
+                        .then(() => {
+                            hideLoading();
+                            showSuccess(imageSuccess, 'Imagem excluída com sucesso!');
+                            loadImages(); // Reload images list
+                        })
+                        .catch(error => {
+                            hideLoading();
+                            console.error("Erro ao excluir imagem:", error);
+                            showError(imageError, `Erro ao excluir imagem: ${error.message}`);
+                        });
+                }
+            }
+
+            // Products Tab Logic
+            addProductBtn.addEventListener('click', () => {
+                const name = productName.value.trim();
+                const description = productDescription.value.trim();
+                const imageUrl = productImageUrl.value.trim();
+                const redirectUrl = productRedirectUrl.value.trim();
+                const buttonText = productButtonText.value.trim() || 'Comprar Agora';
+                
+                if (!name || !description || !imageUrl || !redirectUrl) {
+                    showError(productError, 'Por favor, preencha todos os campos obrigatórios.');
+                    return;
+                }
+                
+                showLoading();
+                
+                // Check if the image can be loaded
+                const testImg = new Image();
+                testImg.onload = () => {
+                    // Image loaded successfully, add product to database
+                    const newProductRef = database.ref('products').push();
+                    newProductRef.set({
+                        name: name,
+                        description: description,
+                        imageUrl: imageUrl,
+                        redirectUrl: redirectUrl,
+                        buttonText: buttonText,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    })
+                    .then(() => {
+                        hideLoading();
+                        showSuccess(productSuccess, 'Produto adicionado com sucesso!');
+                        clearForm([productName, productDescription, productImageUrl, productRedirectUrl]);
+                        productButtonText.value = 'Comprar Agora';
+                        loadProducts(); // Reload products list
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao adicionar produto:", error);
+                        showError(productError, `Erro ao adicionar produto: ${error.message}`);
+                    });
+                };
+                
+                testImg.onerror = () => {
+                    hideLoading();
+                    showError(productError, 'Não foi possível carregar a imagem do produto. Verifique a URL.');
+                };
+                
+                testImg.src = imageUrl;
+            });
+
+            function loadProducts() {
+                productsList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Carregando produtos...</div>';
+                
+                database.ref('products').orderByChild('timestamp').once('value')
+                    .then(snapshot => {
+                        if (snapshot.exists()) {
+                            const products = [];
+                            snapshot.forEach(childSnapshot => {
+                                const product = childSnapshot.val();
+                                product.id = childSnapshot.key;
+                                products.push(product);
+                            });
+                            
+                            // Sort by newest first
+                            products.sort((a, b) => b.timestamp - a.timestamp);
+                            
+                            displayProducts(products);
+                        } else {
+                            productsList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Nenhum produto encontrado.</div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar produtos:', error);
+                        productsList.innerHTML = `<div class="col-span-full text-center text-red-500 py-8">Erro ao carregar produtos: ${error.message}</div>`;
+                    });
+            }
+
+            function displayProducts(products) {
+                if (products.length === 0) {
+                    productsList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Nenhum produto encontrado.</div>';
+                    return;
+                }
+                
+                productsList.innerHTML = '';
+                
+                products.forEach(product => {
+                    const productCard = document.createElement('div');
+                    productCard.className = 'bg-white dark:bg-gray-700 rounded-lg shadow overflow-hidden flex flex-col';
+                    productCard.innerHTML = `
+                        <div class="relative pb-[56.25%]">
+                            <img src="${product.imageUrl}" alt="${product.name}" class="absolute inset-0 w-full h-full object-cover">
+                        </div>
+                        <div class="p-4 flex-grow">
+                            <h3 class="font-semibold text-lg mb-2">${product.name}</h3>
+                            <p class="text-gray-600 dark:text-gray-300 text-sm mb-4">${product.description}</p>
+                            <div class="mt-2">
+                                <a href="${product.redirectUrl}" target="_blank" class="inline-block bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded text-sm transition duration-200">
+                                    ${product.buttonText}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="px-4 pb-4 mt-auto">
+                            <button class="delete-product text-red-500 hover:text-red-700 text-sm font-medium" data-id="${product.id}">
+                                Excluir
+                            </button>
+                        </div>
+                    `;
+                    productsList.appendChild(productCard);
+                    
+                    // Add delete functionality
+                    productCard.querySelector('.delete-product').addEventListener('click', (e) => {
+                        const productId = e.target.getAttribute('data-id');
+                        deleteProduct(productId);
+                    });
+                });
+            }
+
+            function deleteProduct(productId) {
+                if (confirm('Tem certeza que deseja excluir este produto?')) {
+                    showLoading();
+                    database.ref(`products/${productId}`).remove()
+                        .then(() => {
+                            hideLoading();
+                            showSuccess(productSuccess, 'Produto excluído com sucesso!');
+                            loadProducts(); // Reload products list
+                        })
+                        .catch(error => {
+                            hideLoading();
+                            console.error("Erro ao excluir produto:", error);
+                            showError(productError, `Erro ao excluir produto: ${error.message}`);
+                        });
+                }
+            }
+
+            // Clients Tab Logic
+            addClientBtn.addEventListener('click', () => {
+                const name = clientName.value.trim();
+                const email = clientEmail.value.trim();
+                const phone = clientPhone.value.trim();
+                
+                if (!name || !email) {
+                    showError(clientError, 'Por favor, preencha pelo menos o nome e email do cliente.');
+                    return;
+                }
+                
+                showLoading();
+                
+                const newClientRef = database.ref('clients').push();
+                newClientRef.set({
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                })
+                .then(() => {
+                    hideLoading();
+                    showSuccess(clientSuccess, 'Cliente adicionado com sucesso!');
+                    clearForm([clientName, clientEmail, clientPhone]);
+                    loadClients(); // Reload clients list
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error("Erro ao adicionar cliente:", error);
+                    showError(clientError, `Erro ao adicionar cliente: ${error.message}`);
+                });
+            });
+
+            function loadClients() {
+                clientsList.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Carregando clientes...</td></tr>';
+                
+                database.ref('clients').orderByChild('name').once('value')
+                    .then(snapshot => {
+                        if (snapshot.exists()) {
+                            const clients = [];
+                            snapshot.forEach(childSnapshot => {
+                                const client = childSnapshot.val();
+                                client.id = childSnapshot.key;
+                                clients.push(client);
+                            });
+                            
+                            // Sort alphabetically by name
+                            clients.sort((a, b) => a.name.localeCompare(b.name));
+                            
+                            displayClients(clients);
+                        } else {
+                            clientsList.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum cliente encontrado.</td></tr>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar clientes:', error);
+                        clientsList.innerHTML = `<tr><td colspan="4" class="text-center text-red-500 py-4">Erro ao carregar clientes: ${error.message}</td></tr>`;
+                    });
+            }
+
+            function displayClients(clients) {
+                if (clients.length === 0) {
+                    clientsList.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum cliente encontrado.</td></tr>';
+                    return;
+                }
+                
+                clientsList.innerHTML = '';
+                
+                clients.forEach(client => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">${client.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${client.email}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${client.phone || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <button class="delete-client text-red-500 hover:text-red-700 font-medium" data-id="${client.id}">
+                                Excluir
+                            </button>
+                        </td>
+                    `;
+                    clientsList.appendChild(row);
+                    
+                    // Add delete functionality
+                    row.querySelector('.delete-client').addEventListener('click', (e) => {
+                        const clientId = e.target.getAttribute('data-id');
+                        deleteClient(clientId);
+                    });
+                });
+            }
+
+            function deleteClient(clientId) {
+                if (confirm('Tem certeza que deseja excluir este cliente?')) {
+                    showLoading();
+                    database.ref(`clients/${clientId}`).remove()
+                        .then(() => {
+                            hideLoading();
+                            showSuccess(clientSuccess, 'Cliente excluído com sucesso!');
+                            loadClients(); // Reload clients list
+                        })
+                        .catch(error => {
+                            hideLoading();
+                            console.error("Erro ao excluir cliente:", error);
+                            showError(clientError, `Erro ao excluir cliente: ${error.message}`);
+                        });
+                }
+            }
+            
+        } catch (error) {
+            console.error("Erro ao inicializar o Firebase:", error);
+            firebaseStatus.textContent = `Erro ao inicializar o Firebase: ${error.message}`;
+            firebaseStatus.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900', 'dark:text-red-200');
+        }
+    </script>
+</body>
+</html>
