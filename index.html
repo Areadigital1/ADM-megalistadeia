@@ -24,6 +24,104 @@
             }
         }
     </script>
+    <style>
+        /* Estilos para selos baseados em texto */
+        .badge-spinner {
+            display: flex;
+            overflow-x: auto;
+            padding: 10px 0;
+            gap: 10px;
+            scroll-behavior: smooth;
+        }
+        
+        .badge-item {
+            flex: 0 0 auto;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            font-weight: 500;
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+        
+        .dark .badge-item {
+            background-color: #374151;
+            color: #e5e7eb;
+        }
+        
+        .badge-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .badge-item.selected {
+            border-color: #5D5CDE;
+            background-color: #ede9fe;
+            color: #5D5CDE;
+        }
+        
+        .dark .badge-item.selected {
+            background-color: #4c1d95;
+            color: #e5e7eb;
+        }
+        
+        .verified-badge {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 5px;
+        }
+        
+        .verified-badge svg {
+            color: #3897f0;
+            height: 16px;
+            width: 16px;
+        }
+        
+        /* Animação para os spinners */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Estilos para o selo de texto na postagem */
+        .post-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #5D5CDE;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-weight: 500;
+            font-size: 12px;
+            z-index: 10;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            animation: badge-pulse 2s infinite;
+        }
+        
+        @keyframes badge-pulse {
+            0% { opacity: 0.85; }
+            50% { opacity: 1; }
+            100% { opacity: 0.85; }
+        }
+        
+        /* Dark mode para formulários modais */
+        .dark .modal-form input,
+        .dark .modal-form textarea,
+        .dark .modal-form select {
+            background-color: #374151;
+            border-color: #4B5563;
+            color: #E5E7EB;
+        }
+    </style>
 </head>
 <body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-200">
     <!-- App Container -->
@@ -51,9 +149,14 @@
         <div id="dashboardSection" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold text-primary">Painel de Administração</h1>
-                <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition duration-200">
-                    Sair
-                </button>
+                <div class="flex space-x-2">
+                    <button id="appSettingsBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                        Configurações do App
+                    </button>
+                    <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                        Sair
+                    </button>
+                </div>
             </div>
 
             <!-- Firebase Status Indicator -->
@@ -70,6 +173,12 @@
                     </li>
                     <li class="mr-2">
                         <button id="tab-clients" class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-primary dark:hover:text-primary">Clientes</button>
+                    </li>
+                    <li class="mr-2">
+                        <button id="tab-badges" class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-primary dark:hover:text-primary">Selos</button>
+                    </li>
+                    <li class="mr-2">
+                        <button id="tab-credits" class="tab-btn inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-primary hover:border-primary dark:hover:text-primary">Créditos</button>
                     </li>
                 </ul>
             </div>
@@ -89,6 +198,13 @@
                                 <label for="imageUrl" class="block text-sm font-medium mb-1">URL da Imagem</label>
                                 <input type="url" id="imageUrl" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/image.jpg">
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Selo (opcional)</label>
+                                <div id="imageBadgeSpinner" class="badge-spinner">
+                                    <!-- Badges will be dynamically loaded here -->
+                                    <div class="text-gray-400">Carregando selos...</div>
+                                </div>
+                            </div>
                             <div class="flex items-center">
                                 <button id="previewImageBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md mr-2 transition duration-200">
                                     Pré-visualizar
@@ -99,7 +215,10 @@
                             </div>
                             <div id="imagePreview" class="hidden mt-4">
                                 <h3 class="text-sm font-medium mb-2">Pré-visualização:</h3>
-                                <img id="previewImg" src="" alt="Preview" class="max-h-64 rounded-md">
+                                <div class="relative inline-block">
+                                    <img id="previewImg" src="" alt="Preview" class="max-h-64 rounded-md">
+                                    <span id="previewBadge" class="post-badge hidden"></span>
+                                </div>
                             </div>
                             <div id="imageError" class="text-red-500 text-sm hidden"></div>
                             <div id="imageSuccess" class="text-green-500 text-sm hidden"></div>
@@ -139,6 +258,13 @@
                             <div>
                                 <label for="productButtonText" class="block text-sm font-medium mb-1">Texto do Botão</label>
                                 <input type="text" id="productButtonText" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Comprar Agora" value="Comprar Agora">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Selo (opcional)</label>
+                                <div id="productBadgeSpinner" class="badge-spinner">
+                                    <!-- Badges will be dynamically loaded here -->
+                                    <div class="text-gray-400">Carregando selos...</div>
+                                </div>
                             </div>
                             <button id="addProductBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
                                 Adicionar Produto
@@ -204,6 +330,276 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Badges Tab (New) -->
+                <div id="content-badges" class="tab-content hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-semibold mb-4">Adicionar Novo Selo</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="badgeName" class="block text-sm font-medium mb-1">Nome do Selo</label>
+                                <input type="text" id="badgeName" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Nome do selo">
+                            </div>
+                            <button id="addBadgeBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                                Adicionar Selo
+                            </button>
+                            <div id="badgeError" class="text-red-500 text-sm hidden"></div>
+                            <div id="badgeSuccess" class="text-green-500 text-sm hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-4">Selos Disponíveis</h2>
+                        <div id="badgesList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            <!-- Badges will be loaded here -->
+                            <div class="text-center text-gray-500 dark:text-gray-400 py-8 col-span-full">Carregando selos...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Credits Tab (New) -->
+                <div id="content-credits" class="tab-content hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                        <h2 class="text-xl font-semibold mb-4">Adicionar Crédito</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="creditName" class="block text-sm font-medium mb-1">Nome</label>
+                                <input type="text" id="creditName" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Nome completo">
+                            </div>
+                            <div>
+                                <label for="creditRole" class="block text-sm font-medium mb-1">Função</label>
+                                <select id="creditRole" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                                    <option value="creator">Criador</option>
+                                    <option value="editor">Editor</option>
+                                    <option value="contributor">Colaborador</option>
+                                    <option value="designer">Designer</option>
+                                    <option value="developer">Desenvolvedor</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="creditVerified" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                <label for="creditVerified" class="ml-2 block text-sm">Conta Verificada</label>
+                            </div>
+                            <button id="addCreditBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                                Adicionar Crédito
+                            </button>
+                            <div id="creditError" class="text-red-500 text-sm hidden"></div>
+                            <div id="creditSuccess" class="text-green-500 text-sm hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-4">Lista de Créditos</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Função</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Verificado</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="creditsList" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- Credits will be loaded here -->
+                                    <tr>
+                                        <td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Carregando créditos...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- App Settings Modal -->
+        <div id="appSettingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Configurações do Aplicativo</h2>
+                    <button id="closeAppSettingsModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4 modal-form">
+                    <div>
+                        <label for="appLogo" class="block text-sm font-medium mb-1">Logo do Aplicativo (URL)</label>
+                        <input type="url" id="appLogo" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/logo.png">
+                    </div>
+                    <div id="logoPreview" class="hidden text-center my-4">
+                        <img id="previewLogoImg" src="" alt="Logo Preview" class="max-h-24 mx-auto">
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button id="saveAppSettingsBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                            Salvar Configurações
+                        </button>
+                    </div>
+                    <div id="appSettingsError" class="text-red-500 text-sm hidden"></div>
+                    <div id="appSettingsSuccess" class="text-green-500 text-sm hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Product Modal -->
+        <div id="editProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Editar Produto</h2>
+                    <button id="closeEditProductModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4 modal-form">
+                    <input type="hidden" id="editProductId">
+                    <div>
+                        <label for="editProductName" class="block text-sm font-medium mb-1">Nome do Produto</label>
+                        <input type="text" id="editProductName" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Nome do produto">
+                    </div>
+                    <div>
+                        <label for="editProductDescription" class="block text-sm font-medium mb-1">Descrição</label>
+                        <textarea id="editProductDescription" rows="3" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Descrição do produto"></textarea>
+                    </div>
+                    <div>
+                        <label for="editProductImageUrl" class="block text-sm font-medium mb-1">URL da Imagem</label>
+                        <input type="url" id="editProductImageUrl" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/product.jpg">
+                    </div>
+                    <div>
+                        <label for="editProductRedirectUrl" class="block text-sm font-medium mb-1">URL de Redirecionamento</label>
+                        <input type="url" id="editProductRedirectUrl" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/product-page">
+                    </div>
+                    <div>
+                        <label for="editProductButtonText" class="block text-sm font-medium mb-1">Texto do Botão</label>
+                        <input type="text" id="editProductButtonText" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Comprar Agora">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Selo (opcional)</label>
+                        <div id="editProductBadgeSpinner" class="badge-spinner">
+                            <!-- Badges will be dynamically loaded here -->
+                            <div class="text-gray-400">Carregando selos...</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button id="saveEditProductBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                            Salvar Alterações
+                        </button>
+                    </div>
+                    <div id="editProductError" class="text-red-500 text-sm hidden"></div>
+                    <div id="editProductSuccess" class="text-green-500 text-sm hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Image Modal -->
+        <div id="editImageModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Editar Imagem</h2>
+                    <button id="closeEditImageModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4 modal-form">
+                    <input type="hidden" id="editImageId">
+                    <div>
+                        <label for="editImageTitle" class="block text-sm font-medium mb-1">Título da Imagem</label>
+                        <input type="text" id="editImageTitle" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Título da imagem">
+                    </div>
+                    <div>
+                        <label for="editImageUrl" class="block text-sm font-medium mb-1">URL da Imagem</label>
+                        <input type="url" id="editImageUrl" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Selo (opcional)</label>
+                        <div id="editImageBadgeSpinner" class="badge-spinner">
+                            <!-- Badges will be dynamically loaded here -->
+                            <div class="text-gray-400">Carregando selos...</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button id="saveEditImageBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                            Salvar Alterações
+                        </button>
+                    </div>
+                    <div id="editImageError" class="text-red-500 text-sm hidden"></div>
+                    <div id="editImageSuccess" class="text-green-500 text-sm hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Credit Modal -->
+        <div id="editCreditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Editar Crédito</h2>
+                    <button id="closeEditCreditModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4 modal-form">
+                    <input type="hidden" id="editCreditId">
+                    <div>
+                        <label for="editCreditName" class="block text-sm font-medium mb-1">Nome</label>
+                        <input type="text" id="editCreditName" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Nome completo">
+                    </div>
+                    <div>
+                        <label for="editCreditRole" class="block text-sm font-medium mb-1">Função</label>
+                        <select id="editCreditRole" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600">
+                            <option value="creator">Criador</option>
+                            <option value="editor">Editor</option>
+                            <option value="contributor">Colaborador</option>
+                            <option value="designer">Designer</option>
+                            <option value="developer">Desenvolvedor</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="editCreditVerified" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                        <label for="editCreditVerified" class="ml-2 block text-sm">Conta Verificada</label>
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button id="saveEditCreditBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                            Salvar Alterações
+                        </button>
+                    </div>
+                    <div id="editCreditError" class="text-red-500 text-sm hidden"></div>
+                    <div id="editCreditSuccess" class="text-green-500 text-sm hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Badge Modal -->
+        <div id="editBadgeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Editar Selo</h2>
+                    <button id="closeEditBadgeModal" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="space-y-4 modal-form">
+                    <input type="hidden" id="editBadgeId">
+                    <div>
+                        <label for="editBadgeName" class="block text-sm font-medium mb-1">Nome do Selo</label>
+                        <input type="text" id="editBadgeName" class="w-full px-4 py-2 text-base border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-gray-700 dark:border-gray-600" placeholder="Nome do selo">
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button id="saveEditBadgeBtn" class="bg-primary hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                            Salvar Alterações
+                        </button>
+                    </div>
+                    <div id="editBadgeError" class="text-red-500 text-sm hidden"></div>
+                    <div id="editBadgeSuccess" class="text-green-500 text-sm hidden"></div>
+                </div>
             </div>
         </div>
 
@@ -226,11 +622,12 @@
             authDomain: "megalistadeia.firebaseapp.com",
             databaseURL: "https://megalistadeia-default-rtdb.firebaseio.com",
             projectId: "megalistadeia",
-            storageBucket: "megalistadeia.appspot.com", // Corrigido para o formato padrão
+            storageBucket: "megalistadeia.appspot.com",
             messagingSenderId: "900819794642",
             appId: "1:900819794642:web:ee4f0c5b329e4778a98b0b",
             measurementId: "G-0MDDT9B8XN"
         };
+
 
         // Elementos DOM
         const firebaseStatus = document.getElementById('firebaseStatus');
@@ -240,6 +637,9 @@
         const loginError = document.getElementById('loginError');
         const logoutBtn = document.getElementById('logoutBtn');
         const loadingOverlay = document.getElementById('loadingOverlay');
+        const appSettingsBtn = document.getElementById('appSettingsBtn');
+        const appSettingsModal = document.getElementById('appSettingsModal');
+        const closeAppSettingsModal = document.getElementById('closeAppSettingsModal');
 
         // Inicialização do Firebase com tratamento de erros
         try {
@@ -297,9 +697,11 @@
             const addImageBtn = document.getElementById('addImageBtn');
             const imagePreview = document.getElementById('imagePreview');
             const previewImg = document.getElementById('previewImg');
+            const previewBadge = document.getElementById('previewBadge');
             const imageError = document.getElementById('imageError');
             const imageSuccess = document.getElementById('imageSuccess');
             const imagesList = document.getElementById('imagesList');
+            const imageBadgeSpinner = document.getElementById('imageBadgeSpinner');
 
             // Products Tab Elements
             const productName = document.getElementById('productName');
@@ -311,6 +713,7 @@
             const productError = document.getElementById('productError');
             const productSuccess = document.getElementById('productSuccess');
             const productsList = document.getElementById('productsList');
+            const productBadgeSpinner = document.getElementById('productBadgeSpinner');
 
             // Clients Tab Elements
             const clientName = document.getElementById('clientName');
@@ -320,6 +723,79 @@
             const clientError = document.getElementById('clientError');
             const clientSuccess = document.getElementById('clientSuccess');
             const clientsList = document.getElementById('clientsList');
+
+            // Badges Tab Elements (New)
+            const badgeName = document.getElementById('badgeName');
+            const addBadgeBtn = document.getElementById('addBadgeBtn');
+            const badgeError = document.getElementById('badgeError');
+            const badgeSuccess = document.getElementById('badgeSuccess');
+            const badgesList = document.getElementById('badgesList');
+
+            // Credits Tab Elements (New)
+            const creditName = document.getElementById('creditName');
+            const creditRole = document.getElementById('creditRole');
+            const creditVerified = document.getElementById('creditVerified');
+            const addCreditBtn = document.getElementById('addCreditBtn');
+            const creditError = document.getElementById('creditError');
+            const creditSuccess = document.getElementById('creditSuccess');
+            const creditsList = document.getElementById('creditsList');
+
+            // Edit Modals
+            const editProductModal = document.getElementById('editProductModal');
+            const closeEditProductModal = document.getElementById('closeEditProductModal');
+            const saveEditProductBtn = document.getElementById('saveEditProductBtn');
+            const editProductId = document.getElementById('editProductId');
+            const editProductName = document.getElementById('editProductName');
+            const editProductDescription = document.getElementById('editProductDescription');
+            const editProductImageUrl = document.getElementById('editProductImageUrl');
+            const editProductRedirectUrl = document.getElementById('editProductRedirectUrl');
+            const editProductButtonText = document.getElementById('editProductButtonText');
+            const editProductError = document.getElementById('editProductError');
+            const editProductSuccess = document.getElementById('editProductSuccess');
+            const editProductBadgeSpinner = document.getElementById('editProductBadgeSpinner');
+
+            const editImageModal = document.getElementById('editImageModal');
+            const closeEditImageModal = document.getElementById('closeEditImageModal');
+            const saveEditImageBtn = document.getElementById('saveEditImageBtn');
+            const editImageId = document.getElementById('editImageId');
+            const editImageTitle = document.getElementById('editImageTitle');
+            const editImageUrl = document.getElementById('editImageUrl');
+            const editImageError = document.getElementById('editImageError');
+            const editImageSuccess = document.getElementById('editImageSuccess');
+            const editImageBadgeSpinner = document.getElementById('editImageBadgeSpinner');
+
+            const editCreditModal = document.getElementById('editCreditModal');
+            const closeEditCreditModal = document.getElementById('closeEditCreditModal');
+            const saveEditCreditBtn = document.getElementById('saveEditCreditBtn');
+            const editCreditId = document.getElementById('editCreditId');
+            const editCreditName = document.getElementById('editCreditName');
+            const editCreditRole = document.getElementById('editCreditRole');
+            const editCreditVerified = document.getElementById('editCreditVerified');
+            const editCreditError = document.getElementById('editCreditError');
+            const editCreditSuccess = document.getElementById('editCreditSuccess');
+
+            const editBadgeModal = document.getElementById('editBadgeModal');
+            const closeEditBadgeModal = document.getElementById('closeEditBadgeModal');
+            const saveEditBadgeBtn = document.getElementById('saveEditBadgeBtn');
+            const editBadgeId = document.getElementById('editBadgeId');
+            const editBadgeName = document.getElementById('editBadgeName');
+            const editBadgeError = document.getElementById('editBadgeError');
+            const editBadgeSuccess = document.getElementById('editBadgeSuccess');
+
+            // App Settings
+            const appLogo = document.getElementById('appLogo');
+            const logoPreview = document.getElementById('logoPreview');
+            const previewLogoImg = document.getElementById('previewLogoImg');
+            const saveAppSettingsBtn = document.getElementById('saveAppSettingsBtn');
+            const appSettingsError = document.getElementById('appSettingsError');
+            const appSettingsSuccess = document.getElementById('appSettingsSuccess');
+
+            // Variáveis para controle de estado
+            let selectedImageBadge = null;
+            let selectedProductBadge = null;
+            let selectedEditImageBadge = null;
+            let selectedEditProductBadge = null;
+            let badges = []; // Array global para armazenar os selos carregados
 
             // Utility Functions
             function showLoading() {
@@ -348,8 +824,23 @@
 
             function clearForm(inputs) {
                 inputs.forEach(input => {
-                    input.value = '';
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
                 });
+            }
+
+            function getTranslatedRole(role) {
+                const roles = {
+                    'creator': 'Criador',
+                    'editor': 'Editor',
+                    'contributor': 'Colaborador',
+                    'designer': 'Designer',
+                    'developer': 'Desenvolvedor'
+                };
+                return roles[role] || role;
             }
 
             // Authentication Logic
@@ -428,6 +919,156 @@
                 loadImages();
                 loadProducts();
                 loadClients();
+                loadBadges();
+                loadCredits();
+                loadAppSettings();
+            }
+
+            // App Settings Logic
+            appSettingsBtn.addEventListener('click', () => {
+                appSettingsModal.classList.remove('hidden');
+                loadAppSettings();
+            });
+
+            closeAppSettingsModal.addEventListener('click', () => {
+                appSettingsModal.classList.add('hidden');
+            });
+
+            appLogo.addEventListener('input', () => {
+                const url = appLogo.value.trim();
+                if (url) {
+                    previewLogoImg.src = url;
+                    previewLogoImg.onload = () => {
+                        logoPreview.classList.remove('hidden');
+                    };
+                    previewLogoImg.onerror = () => {
+                        logoPreview.classList.add('hidden');
+                    };
+                } else {
+                    logoPreview.classList.add('hidden');
+                }
+            });
+
+            saveAppSettingsBtn.addEventListener('click', () => {
+                const logo = appLogo.value.trim();
+                
+                showLoading();
+                
+                // Save app settings to firebase
+                database.ref('appSettings').set({
+                    logo: logo
+                })
+                .then(() => {
+                    hideLoading();
+                    showSuccess(appSettingsSuccess, 'Configurações salvas com sucesso!');
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error("Erro ao salvar configurações:", error);
+                    showError(appSettingsError, `Erro: ${error.message}`);
+                });
+            });
+
+            function loadAppSettings() {
+                showLoading();
+                
+                database.ref('appSettings').once('value')
+                    .then(snapshot => {
+                        hideLoading();
+                        if (snapshot.exists()) {
+                            const settings = snapshot.val();
+                            appLogo.value = settings.logo || '';
+                            
+                            if (settings.logo) {
+                                previewLogoImg.src = settings.logo;
+                                previewLogoImg.onload = () => {
+                                    logoPreview.classList.remove('hidden');
+                                };
+                                previewLogoImg.onerror = () => {
+                                    logoPreview.classList.add('hidden');
+                                };
+                            } else {
+                                logoPreview.classList.add('hidden');
+                            }
+                        } else {
+                            appLogo.value = '';
+                            logoPreview.classList.add('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao carregar configurações:", error);
+                        showError(appSettingsError, `Erro: ${error.message}`);
+                    });
+            }
+
+            // Badge Functions (for reuse across tabs) - Agora trabalhando com texto em vez de imagens
+            function loadBadgesToSpinner(spinnerElement, selectedBadge = null) {
+                if (badges.length === 0) {
+                    spinnerElement.innerHTML = '<div class="text-gray-400">Nenhum selo disponível</div>';
+                    return;
+                }
+                
+                spinnerElement.innerHTML = '';
+                
+                // Add "None" option first
+                const noneOption = document.createElement('div');
+                noneOption.className = `badge-item ${selectedBadge === null ? 'selected' : ''}`;
+                noneOption.textContent = 'Nenhum';
+                noneOption.addEventListener('click', () => {
+                    if (spinnerElement === imageBadgeSpinner) {
+                        selectedImageBadge = null;
+                    } else if (spinnerElement === productBadgeSpinner) {
+                        selectedProductBadge = null;
+                    } else if (spinnerElement === editImageBadgeSpinner) {
+                        selectedEditImageBadge = null;
+                    } else if (spinnerElement === editProductBadgeSpinner) {
+                        selectedEditProductBadge = null;
+                    }
+                    
+                    // Update selection visually
+                    spinnerElement.querySelectorAll('.badge-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    noneOption.classList.add('selected');
+                    
+                    // Update preview if needed
+                    if (spinnerElement === imageBadgeSpinner && imagePreview.classList.contains('hidden') === false) {
+                        previewBadge.classList.add('hidden');
+                    }
+                });
+                spinnerElement.appendChild(noneOption);
+                
+                // Add all badges
+                badges.forEach(badge => {
+                    const badgeItem = document.createElement('div');
+                    badgeItem.className = `badge-item ${selectedBadge === badge.id ? 'selected' : ''}`;
+                    badgeItem.textContent = badge.name;
+                    badgeItem.title = badge.name;
+                    badgeItem.addEventListener('click', () => {
+                        if (spinnerElement === imageBadgeSpinner) {
+                            selectedImageBadge = badge.id;
+                            // Update preview if visible
+                            if (imagePreview.classList.contains('hidden') === false) {
+                                previewBadge.textContent = badge.name;
+                                previewBadge.classList.remove('hidden');
+                            }
+                        } else if (spinnerElement === productBadgeSpinner) {
+                            selectedProductBadge = badge.id;
+                        } else if (spinnerElement === editImageBadgeSpinner) {
+                            selectedEditImageBadge = badge.id;
+                        } else if (spinnerElement === editProductBadgeSpinner) {
+                            selectedEditProductBadge = badge.id;
+                        }
+                        
+                        // Update selection visually
+                        spinnerElement.querySelectorAll('.badge-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        badgeItem.classList.add('selected');
+                    });
+                    spinnerElement.appendChild(badgeItem);
+                });
             }
 
             // Images Tab Logic
@@ -442,6 +1083,17 @@
                 previewImg.onload = () => {
                     imagePreview.classList.remove('hidden');
                     imageError.classList.add('hidden');
+                    
+                    // Show selected badge if any
+                    if (selectedImageBadge) {
+                        const selectedBadgeObj = badges.find(b => b.id === selectedImageBadge);
+                        if (selectedBadgeObj) {
+                            previewBadge.textContent = selectedBadgeObj.name;
+                            previewBadge.classList.remove('hidden');
+                        }
+                    } else {
+                        previewBadge.classList.add('hidden');
+                    }
                 };
                 previewImg.onerror = () => {
                     showError(imageError, 'Não foi possível carregar a imagem. Verifique a URL.');
@@ -468,13 +1120,16 @@
                     newImageRef.set({
                         title: title,
                         url: url,
+                        badgeId: selectedImageBadge,
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     })
                     .then(() => {
                         hideLoading();
                         showSuccess(imageSuccess, 'Imagem adicionada com sucesso!');
                         clearForm([imageTitle, imageUrl]);
+                        selectedImageBadge = null;
                         imagePreview.classList.add('hidden');
+                        loadBadgesToSpinner(imageBadgeSpinner); // Reset badge selection
                         loadImages(); // Reload images list
                     })
                     .catch(error => {
@@ -528,15 +1183,28 @@
                 imagesList.innerHTML = '';
                 
                 images.forEach(image => {
+                    // Find badge if one is assigned
+                    let badgeHtml = '';
+                    if (image.badgeId) {
+                        const badge = badges.find(b => b.id === image.badgeId);
+                        if (badge) {
+                            badgeHtml = `<span class="post-badge">${badge.name}</span>`;
+                        }
+                    }
+                    
                     const imageCard = document.createElement('div');
-                    imageCard.className = 'bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden shadow';
+                    imageCard.className = 'bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden shadow relative';
                     imageCard.innerHTML = `
                         <div class="relative pb-[75%]">
                             <img src="${image.url}" alt="${image.title}" class="absolute inset-0 w-full h-full object-cover">
+                            ${badgeHtml}
                         </div>
                         <div class="p-4">
                             <h3 class="font-medium truncate">${image.title}</h3>
-                            <div class="mt-2 flex justify-end">
+                            <div class="mt-2 flex justify-end space-x-3">
+                                <button class="edit-image text-blue-500 hover:text-blue-700 text-sm font-medium" data-id="${image.id}">
+                                    Editar
+                                </button>
                                 <button class="delete-image text-red-500 hover:text-red-700 text-sm font-medium" data-id="${image.id}">
                                     Excluir
                                 </button>
@@ -545,6 +1213,12 @@
                     `;
                     imagesList.appendChild(imageCard);
                     
+                    // Add edit functionality
+                    imageCard.querySelector('.edit-image').addEventListener('click', (e) => {
+                        const imageId = e.target.getAttribute('data-id');
+                        openEditImageModal(imageId);
+                    });
+                    
                     // Add delete functionality
                     imageCard.querySelector('.delete-image').addEventListener('click', (e) => {
                         const imageId = e.target.getAttribute('data-id');
@@ -552,6 +1226,86 @@
                     });
                 });
             }
+
+            function openEditImageModal(imageId) {
+                showLoading();
+                
+                database.ref(`images/${imageId}`).once('value')
+                    .then(snapshot => {
+                        hideLoading();
+                        if (snapshot.exists()) {
+                            const image = snapshot.val();
+                            editImageId.value = imageId;
+                            editImageTitle.value = image.title || '';
+                            editImageUrl.value = image.url || '';
+                            selectedEditImageBadge = image.badgeId || null;
+                            
+                            // Load badges and select the current one
+                            loadBadgesToSpinner(editImageBadgeSpinner, selectedEditImageBadge);
+                            
+                            // Show modal
+                            editImageModal.classList.remove('hidden');
+                        } else {
+                            showError(imageError, 'Imagem não encontrada.');
+                        }
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao carregar dados da imagem:", error);
+                        showError(imageError, `Erro: ${error.message}`);
+                    });
+            }
+
+            closeEditImageModal.addEventListener('click', () => {
+                editImageModal.classList.add('hidden');
+            });
+
+            saveEditImageBtn.addEventListener('click', () => {
+                const imageId = editImageId.value;
+                const title = editImageTitle.value.trim();
+                const url = editImageUrl.value.trim();
+                
+                if (!title || !url) {
+                    showError(editImageError, 'Por favor, preencha todos os campos obrigatórios.');
+                    return;
+                }
+                
+                showLoading();
+                
+                // Check if the image can be loaded
+                const testImg = new Image();
+                testImg.onload = () => {
+                    // Update image in database
+                    database.ref(`images/${imageId}`).update({
+                        title: title,
+                        url: url,
+                        badgeId: selectedEditImageBadge,
+                        // Don't update timestamp to preserve order
+                    })
+                    .then(() => {
+                        hideLoading();
+                        showSuccess(editImageSuccess, 'Imagem atualizada com sucesso!');
+                        
+                        // Close modal after short delay
+                        setTimeout(() => {
+                            editImageModal.classList.add('hidden');
+                            loadImages(); // Reload images
+                        }, 1000);
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao atualizar imagem:", error);
+                        showError(editImageError, `Erro: ${error.message}`);
+                    });
+                };
+                
+                testImg.onerror = () => {
+                    hideLoading();
+                    showError(editImageError, 'Não foi possível carregar a imagem. Verifique a URL.');
+                };
+                
+                testImg.src = url;
+            });
 
             function deleteImage(imageId) {
                 if (confirm('Tem certeza que deseja excluir esta imagem?')) {
@@ -596,6 +1350,7 @@
                         imageUrl: imageUrl,
                         redirectUrl: redirectUrl,
                         buttonText: buttonText,
+                        badgeId: selectedProductBadge,
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     })
                     .then(() => {
@@ -603,6 +1358,8 @@
                         showSuccess(productSuccess, 'Produto adicionado com sucesso!');
                         clearForm([productName, productDescription, productImageUrl, productRedirectUrl]);
                         productButtonText.value = 'Comprar Agora';
+                        selectedProductBadge = null;
+                        loadBadgesToSpinner(productBadgeSpinner); // Reset badge selection
                         loadProducts(); // Reload products list
                     })
                     .catch(error => {
@@ -656,11 +1413,21 @@
                 productsList.innerHTML = '';
                 
                 products.forEach(product => {
+                    // Find badge if one is assigned
+                    let badgeHtml = '';
+                    if (product.badgeId) {
+                        const badge = badges.find(b => b.id === product.badgeId);
+                        if (badge) {
+                            badgeHtml = `<span class="post-badge">${badge.name}</span>`;
+                        }
+                    }
+                    
                     const productCard = document.createElement('div');
-                    productCard.className = 'bg-white dark:bg-gray-700 rounded-lg shadow overflow-hidden flex flex-col';
+                    productCard.className = 'bg-white dark:bg-gray-700 rounded-lg shadow overflow-hidden flex flex-col relative';
                     productCard.innerHTML = `
                         <div class="relative pb-[56.25%]">
                             <img src="${product.imageUrl}" alt="${product.name}" class="absolute inset-0 w-full h-full object-cover">
+                            ${badgeHtml}
                         </div>
                         <div class="p-4 flex-grow">
                             <h3 class="font-semibold text-lg mb-2">${product.name}</h3>
@@ -671,13 +1438,22 @@
                                 </a>
                             </div>
                         </div>
-                        <div class="px-4 pb-4 mt-auto">
+                        <div class="px-4 pb-4 mt-auto flex justify-between">
+                            <button class="edit-product text-blue-500 hover:text-blue-700 text-sm font-medium" data-id="${product.id}">
+                                Editar
+                            </button>
                             <button class="delete-product text-red-500 hover:text-red-700 text-sm font-medium" data-id="${product.id}">
                                 Excluir
                             </button>
                         </div>
                     `;
                     productsList.appendChild(productCard);
+                    
+                    // Add edit functionality
+                    productCard.querySelector('.edit-product').addEventListener('click', (e) => {
+                        const productId = e.target.getAttribute('data-id');
+                        openEditProductModal(productId);
+                    });
                     
                     // Add delete functionality
                     productCard.querySelector('.delete-product').addEventListener('click', (e) => {
@@ -686,6 +1462,95 @@
                     });
                 });
             }
+
+            function openEditProductModal(productId) {
+                showLoading();
+                
+                database.ref(`products/${productId}`).once('value')
+                    .then(snapshot => {
+                        hideLoading();
+                        if (snapshot.exists()) {
+                            const product = snapshot.val();
+                            editProductId.value = productId;
+                            editProductName.value = product.name || '';
+                            editProductDescription.value = product.description || '';
+                            editProductImageUrl.value = product.imageUrl || '';
+                            editProductRedirectUrl.value = product.redirectUrl || '';
+                            editProductButtonText.value = product.buttonText || 'Comprar Agora';
+                            selectedEditProductBadge = product.badgeId || null;
+                            
+                            // Load badges and select the current one
+                            loadBadgesToSpinner(editProductBadgeSpinner, selectedEditProductBadge);
+                            
+                            // Show modal
+                            editProductModal.classList.remove('hidden');
+                        } else {
+                            showError(productError, 'Produto não encontrado.');
+                        }
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao carregar dados do produto:", error);
+                        showError(productError, `Erro: ${error.message}`);
+                    });
+            }
+
+            closeEditProductModal.addEventListener('click', () => {
+                editProductModal.classList.add('hidden');
+            });
+
+            saveEditProductBtn.addEventListener('click', () => {
+                const productId = editProductId.value;
+                const name = editProductName.value.trim();
+                const description = editProductDescription.value.trim();
+                const imageUrl = editProductImageUrl.value.trim();
+                const redirectUrl = editProductRedirectUrl.value.trim();
+                const buttonText = editProductButtonText.value.trim() || 'Comprar Agora';
+                
+                if (!name || !description || !imageUrl || !redirectUrl) {
+                    showError(editProductError, 'Por favor, preencha todos os campos obrigatórios.');
+                    return;
+                }
+                
+                showLoading();
+                
+                // Check if the image can be loaded
+                const testImg = new Image();
+                testImg.onload = () => {
+                    // Update product in database
+                    database.ref(`products/${productId}`).update({
+                        name: name,
+                        description: description,
+                        imageUrl: imageUrl,
+                        redirectUrl: redirectUrl,
+                        buttonText: buttonText,
+                        badgeId: selectedEditProductBadge
+                        // Don't update timestamp to preserve order
+                    })
+                    .then(() => {
+                        hideLoading();
+                        showSuccess(editProductSuccess, 'Produto atualizado com sucesso!');
+                        
+                        // Close modal after short delay
+                        setTimeout(() => {
+                            editProductModal.classList.add('hidden');
+                            loadProducts(); // Reload products
+                        }, 1000);
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao atualizar produto:", error);
+                        showError(editProductError, `Erro: ${error.message}`);
+                    });
+                };
+                
+                testImg.onerror = () => {
+                    hideLoading();
+                    showError(editProductError, 'Não foi possível carregar a imagem do produto. Verifique a URL.');
+                };
+                
+                testImg.src = imageUrl;
+            });
 
             function deleteProduct(productId) {
                 if (confirm('Tem certeza que deseja excluir este produto?')) {
@@ -811,6 +1676,420 @@
                         });
                 }
             }
+
+            // Badges Tab Logic (New) - Agora trabalhando com texto em vez de imagens
+            addBadgeBtn.addEventListener('click', () => {
+                const name = badgeName.value.trim();
+
+                if (!name) {
+                    showError(badgeError, 'Por favor, informe o nome do selo.');
+                    return;
+                }
+
+                showLoading();
+                
+                // Add text badge to database
+                const newBadgeRef = database.ref('badges').push();
+                newBadgeRef.set({
+                    name: name,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                })
+                .then(() => {
+                    hideLoading();
+                    showSuccess(badgeSuccess, 'Selo adicionado com sucesso!');
+                    clearForm([badgeName]);
+                    loadBadges(); // Reload badges list
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error("Erro ao adicionar selo:", error);
+                    showError(badgeError, `Erro ao adicionar selo: ${error.message}`);
+                });
+            });
+
+            function loadBadges() {
+                badgesList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Carregando selos...</div>';
+                
+                database.ref('badges').orderByChild('timestamp').once('value')
+                    .then(snapshot => {
+                        // Reset global badges array
+                        badges = [];
+                        
+                        if (snapshot.exists()) {
+                            snapshot.forEach(childSnapshot => {
+                                const badge = childSnapshot.val();
+                                badge.id = childSnapshot.key;
+                                badges.push(badge);
+                            });
+                            
+                            // Sort by newest first
+                            badges.sort((a, b) => b.timestamp - a.timestamp);
+                            
+                            displayBadges(badges);
+                            
+                            // Update badge spinners in all forms
+                            loadBadgesToSpinner(imageBadgeSpinner, selectedImageBadge);
+                            loadBadgesToSpinner(productBadgeSpinner, selectedProductBadge);
+                        } else {
+                            badgesList.innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Nenhum selo encontrado.</div>';
+                            
+                            // Update badge spinners with empty state
+                            imageBadgeSpinner.innerHTML = '<div class="text-gray-400">Nenhum selo disponível</div>';
+                            productBadgeSpinner.innerHTML = '<div class="text-gray-400">Nenhum selo disponível</div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar selos:', error);
+                        badgesList.innerHTML = `<div class="col-span-full text-center text-red-500 py-8">Erro ao carregar selos: ${error.message}</div>`;
+                    });
+            }
+
+            function displayBadges(badgesList) {
+                if (badgesList.length === 0) {
+                    document.getElementById('badgesList').innerHTML = '<div class="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">Nenhum selo encontrado.</div>';
+                    return;
+                }
+                
+                const badgesListElement = document.getElementById('badgesList');
+                badgesListElement.innerHTML = '';
+                
+                badgesList.forEach(badge => {
+                    const badgeCard = document.createElement('div');
+                    badgeCard.className = 'bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden shadow-sm';
+                    badgeCard.innerHTML = `
+                        <div class="p-4 bg-white dark:bg-gray-800">
+                            <h3 class="font-medium text-center mb-3">${badge.name}</h3>
+                            <div class="flex justify-between text-sm">
+                                <button class="edit-badge text-blue-500 hover:text-blue-700 font-medium" data-id="${badge.id}">
+                                    Editar
+                                </button>
+                                <button class="delete-badge text-red-500 hover:text-red-700 font-medium" data-id="${badge.id}">
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    badgesListElement.appendChild(badgeCard);
+                    
+                    // Adicionar event listeners diretamente aos botões
+                    badgeCard.querySelector('.edit-badge').addEventListener('click', () => {
+                        openEditBadgeModal(badge.id);
+                    });
+                    
+                    badgeCard.querySelector('.delete-badge').addEventListener('click', () => {
+                        deleteBadge(badge.id);
+                    });
+                });
+            }
+
+            // Função de edição de selo
+            function openEditBadgeModal(badgeId) {
+                showLoading();
+                
+                database.ref(`badges/${badgeId}`).once('value')
+                    .then(snapshot => {
+                        hideLoading();
+                        if (snapshot.exists()) {
+                            const badge = snapshot.val();
+                            editBadgeId.value = badgeId;
+                            editBadgeName.value = badge.name || '';
+                            
+                            // Show modal
+                            editBadgeModal.classList.remove('hidden');
+                        } else {
+                            showError(badgeError, 'Selo não encontrado.');
+                        }
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao carregar dados do selo:", error);
+                        showError(badgeError, `Erro: ${error.message}`);
+                    });
+            }
+
+            // Função de exclusão de selo
+            function deleteBadge(badgeId) {
+                if (confirm('Tem certeza que deseja excluir este selo? Isso pode afetar imagens e produtos que usam este selo.')) {
+                    showLoading();
+                    
+                    // First remove references to this badge
+                    const updates = {};
+                    
+                    // Check images that use this badge
+                    database.ref('images').orderByChild('badgeId').equalTo(badgeId).once('value')
+                        .then(snapshot => {
+                            if (snapshot.exists()) {
+                                snapshot.forEach(childSnapshot => {
+                                    updates[`images/${childSnapshot.key}/badgeId`] = null;
+                                });
+                            }
+                            
+                            // Check products that use this badge
+                            return database.ref('products').orderByChild('badgeId').equalTo(badgeId).once('value');
+                        })
+                        .then(snapshot => {
+                            if (snapshot.exists()) {
+                                snapshot.forEach(childSnapshot => {
+                                    updates[`products/${childSnapshot.key}/badgeId`] = null;
+                                });
+                            }
+                            
+                            // Delete the badge and update references
+                            updates[`badges/${badgeId}`] = null;
+                            
+                            return database.ref().update(updates);
+                        })
+                        .then(() => {
+                            hideLoading();
+                            showSuccess(badgeSuccess, 'Selo excluído com sucesso!');
+                            loadBadges(); // Reload badges
+                            loadImages(); // Reload images as they may have referenced this badge
+                            loadProducts(); // Reload products as they may have referenced this badge
+                        })
+                        .catch(error => {
+                            hideLoading();
+                            console.error("Erro ao excluir selo:", error);
+                            showError(badgeError, `Erro ao excluir selo: ${error.message}`);
+                        });
+                }
+            }
+
+            closeEditBadgeModal.addEventListener('click', () => {
+                editBadgeModal.classList.add('hidden');
+            });
+
+            saveEditBadgeBtn.addEventListener('click', () => {
+                const badgeId = editBadgeId.value;
+                const name = editBadgeName.value.trim();
+                
+                if (!name) {
+                    showError(editBadgeError, 'Por favor, informe o nome do selo.');
+                    return;
+                }
+                
+                showLoading();
+                
+                // Update badge in database
+                database.ref(`badges/${badgeId}`).update({
+                    name: name
+                    // Don't update timestamp to preserve order
+                })
+                .then(() => {
+                    hideLoading();
+                    showSuccess(editBadgeSuccess, 'Selo atualizado com sucesso!');
+                    
+                    // Close modal after short delay
+                    setTimeout(() => {
+                        editBadgeModal.classList.add('hidden');
+                        loadBadges(); // Reload badges and update spinners
+                    }, 1000);
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error("Erro ao atualizar selo:", error);
+                    showError(editBadgeError, `Erro: ${error.message}`);
+                });
+            });
+
+            // Credits Tab Logic (New)
+            addCreditBtn.addEventListener('click', () => {
+                const name = creditName.value.trim();
+                const role = creditRole.value;
+                const verified = creditVerified.checked;
+                
+                if (!name) {
+                    showError(creditError, 'Por favor, preencha pelo menos o nome.');
+                    return;
+                }
+                
+                showLoading();
+                
+                const newCreditRef = database.ref('credits').push();
+                newCreditRef.set({
+                    name: name,
+                    role: role,
+                    verified: verified,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                })
+                .then(() => {
+                    hideLoading();
+                    showSuccess(creditSuccess, 'Crédito adicionado com sucesso!');
+                    clearForm([creditName, creditVerified]);
+                    creditRole.value = 'creator'; // Reset to default
+                    loadCredits(); // Reload credits list
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error("Erro ao adicionar crédito:", error);
+                    showError(creditError, `Erro ao adicionar crédito: ${error.message}`);
+                });
+            });
+
+            function loadCredits() {
+                creditsList.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Carregando créditos...</td></tr>';
+                
+                database.ref('credits').orderByChild('timestamp').once('value')
+                    .then(snapshot => {
+                        if (snapshot.exists()) {
+                            const credits = [];
+                            snapshot.forEach(childSnapshot => {
+                                const credit = childSnapshot.val();
+                                credit.id = childSnapshot.key;
+                                credits.push(credit);
+                            });
+                            
+                            // Sort by newest first
+                            credits.sort((a, b) => b.timestamp - a.timestamp);
+                            
+                            displayCredits(credits);
+                        } else {
+                            creditsList.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum crédito encontrado.</td></tr>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar créditos:', error);
+                        creditsList.innerHTML = `<tr><td colspan="4" class="text-center text-red-500 py-4">Erro ao carregar créditos: ${error.message}</td></tr>`;
+                    });
+            }
+
+            function displayCredits(credits) {
+                if (credits.length === 0) {
+                    creditsList.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum crédito encontrado.</td></tr>';
+                    return;
+                }
+                
+                creditsList.innerHTML = '';
+                
+                credits.forEach(credit => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+                    
+                    // Prepare verified badge HTML if needed
+                    const verifiedBadge = credit.verified ? `
+                        <span class="verified-badge" title="Verificado">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+                            </svg>
+                        </span>` : '';
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            ${credit.name}${verifiedBadge}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">${getTranslatedRole(credit.role)}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">
+                            ${credit.verified ? 
+                                '<span class="text-blue-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></span>' : 
+                                '<span class="text-gray-400">-</span>'
+                            }
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right space-x-3">
+                            <button class="edit-credit text-blue-500 hover:text-blue-700 font-medium inline-block">
+                                Editar
+                            </button>
+                            <button class="delete-credit text-red-500 hover:text-red-700 font-medium inline-block">
+                                Excluir
+                            </button>
+                        </td>
+                    `;
+                    creditsList.appendChild(row);
+                    
+                    // Adicionar event listeners diretamente aos botões
+                    row.querySelector('.edit-credit').addEventListener('click', () => {
+                        openEditCreditModal(credit.id);
+                    });
+                    
+                    row.querySelector('.delete-credit').addEventListener('click', () => {
+                        deleteCredit(credit.id);
+                    });
+                });
+            }
+
+            // Função de edição de crédito
+            function openEditCreditModal(creditId) {
+                showLoading();
+                
+                database.ref(`credits/${creditId}`).once('value')
+                    .then(snapshot => {
+                        hideLoading();
+                        if (snapshot.exists()) {
+                            const credit = snapshot.val();
+                            editCreditId.value = creditId;
+                            editCreditName.value = credit.name || '';
+                            editCreditRole.value = credit.role || 'creator';
+                            editCreditVerified.checked = credit.verified || false;
+                            
+                            // Show modal
+                            editCreditModal.classList.remove('hidden');
+                        } else {
+                            showError(creditError, 'Crédito não encontrado.');
+                        }
+                    })
+                    .catch(error => {
+                        hideLoading();
+                        console.error("Erro ao carregar dados do crédito:", error);
+                        showError(creditError, `Erro: ${error.message}`);
+                    });
+            }
+
+            closeEditCreditModal.addEventListener('click', () => {
+                editCreditModal.classList.add('hidden');
+            });
+
+            saveEditCreditBtn.addEventListener('click', () => {
+                const creditId = editCreditId.value;
+                const name = editCreditName.value.trim();
+                const role = editCreditRole.value;
+                const verified = editCreditVerified.checked;
+                
+                if (!name) {
+                    showError(editCreditError, 'Por favor, preencha o nome.');
+                    return;
+                }
+                
+                showLoading();
+                
+                database.ref(`credits/${creditId}`).update({
+                    name: name,
+                    role: role,
+                    verified: verified
+                    // Don't update timestamp to preserve order
+                })
+                .then(() => {
+                    hideLoading();
+                    showSuccess(editCreditSuccess, 'Crédito atualizado com sucesso!');
+                    
+                    // Close modal after short delay
+                    setTimeout(() => {
+                        editCreditModal.classList.add('hidden');
+                        loadCredits(); // Reload credits
+                    }, 1000);
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error("Erro ao atualizar crédito:", error);
+                    showError(editCreditError, `Erro: ${error.message}`);
+                });
+            });
+
+            // Função para excluir crédito
+            function deleteCredit(creditId) {
+                if (confirm('Tem certeza que deseja excluir este crédito?')) {
+                    showLoading();
+                    
+                    database.ref(`credits/${creditId}`).remove()
+                        .then(() => {
+                            hideLoading();
+                            showSuccess(creditSuccess, 'Crédito excluído com sucesso!');
+                            loadCredits(); // Reload credits list
+                        })
+                        .catch(error => {
+                            hideLoading();
+                            console.error("Erro ao excluir crédito:", error);
+                            showError(creditError, `Erro ao excluir crédito: ${error.message}`);
+                        });
+                }
+            }
             
         } catch (error) {
             console.error("Erro ao inicializar o Firebase:", error);
@@ -819,4 +2098,4 @@
         }
     </script>
 </body>
-</html>
+                                        </html>
